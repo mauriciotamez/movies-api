@@ -8,8 +8,8 @@ const {
 } = require('../models/actorsInMovies');
 
 const initModels = () => {
-  ActorsInMovies.belongsToMany(Movie);
-  Movie.belongsToMany(ActorsInMovies);
+  Movie.belongsToMany(Actor, { through: ActorsInMovies });
+  Actor.belongsToMany(Movie, { through: ActorsInMovies });
 
   Movie.hasMany(Review);
   Review.belongsTo(Movie);
