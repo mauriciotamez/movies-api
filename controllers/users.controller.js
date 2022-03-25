@@ -11,21 +11,17 @@ const models = require('../models/index')
 
 exports.getAllUsers = handleError(
   async (req, res, next) => {
-    try {
-      const users = await models.user.findAll({
-        where: { status: 'active' },
-        attributes: {
-          exclude: ['password']
-        }
-      })
+    const users = await models.user.findAll({
+      where: { status: 'active' },
+      attributes: {
+        exclude: ['password']
+      }
+    })
 
-      res.status(200).json({
-        status: 'success',
-        data: { users }
-      })
-    } catch (e) {
-      console.log(e)
-    }
+    res.status(200).json({
+      status: 'success',
+      data: { users }
+    })
   }
 )
 
@@ -81,13 +77,59 @@ exports.createUser = handleError(async (req, res, next) => {
   })
 })
 
-exports.updateUser = handleError(
-  async (req, res, next) => {}
+exports.updateUser = handleError(async (req, res, next) => {
+  const { id } = req.params
+
+  const data = filterObj(req.body, 'email', 'username')
+
+  const user = await models.user.findOne({
+    where: { id, status: 'active' },
+    attributes: { exclude: ['password'] }
+  })
+
+  if (!user) {
+    return next(
+      new AppError(404, 'Cannot update user, invalid ID.')
+    )
+  }
+
+  await user.update({ ...data })
+
+  res.status(200).json({
+    status: 'success',
+    data: { user }
+  })
+})
+
+exports.updateUserRole = handleError(
+  async (req, res, next) => {
+    const { id } = req.params
+
+    const data = filterObj(req.body, 'role')
+  }
 )
 
-exports.deleteUser = handleError(
-  async (req, res, next) => {}
-)
+exports.deleteUser = handleError(async (req, res, next) => {
+  const { id } = req.params
+
+  const user = await models.user.findOne({
+    where: { id, status: 'active' },
+    attributes: { exclude: ['password'] }
+  })
+
+  if (!user) {
+    return next(
+      new AppError(404, 'Cannot delete user, invalid ID.')
+    )
+  }
+
+  await user.update({ status: 'deleted' })
+
+  res.status(200).json({
+    status: 'success',
+    data: { user }
+  })
+})
 
 exports.loginUser = async (req, res, next) => {
   const { email, password } = req.body
