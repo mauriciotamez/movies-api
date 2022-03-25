@@ -1,23 +1,42 @@
-const express = require('express');
+const express = require('express')
 
-const router = express.Router();
+const router = express.Router()
 
+// Middlewares
+const {
+  validateSession,
+  isAdmin
+} = require('../middlewares/auth.middleware')
+
+// Controllers
 const {
   getAllUsers,
   getUserByID,
   createUser,
   updateUser,
-  deleteUser
-} = require('../controllers/users.controller');
+  deleteUser,
+  loginUser,
+  updateUserRole
+} = require('../controllers/users.controller')
 
-router.get('/', getAllUsers);
+router.post('/login', loginUser)
 
-router.get('/:id', getUserByID);
+router.post('/', createUser)
 
-router.post('/', createUser);
+router.use(validateSession)
 
-router.patch('/:id', updateUser);
+router.get('/', isAdmin(['admin']), getAllUsers)
 
-router.delete('/:id', deleteUser);
+router.get('/:id', isAdmin(['admin']), getUserByID)
 
-module.exports = { usersRouter: router };
+router.patch('/:id', updateUser)
+
+router.patch(
+  '/admin/:id',
+  isAdmin(['admin']),
+  updateUserRole
+)
+
+router.delete('/:id', isAdmin(['admin']), deleteUser)
+
+module.exports = { usersRouter: router }

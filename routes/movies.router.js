@@ -1,23 +1,32 @@
-const express = require('express');
+const express = require('express')
 
-const router = express.Router();
+const router = express.Router()
 
+// Middlewares
+const {
+  isAdmin,
+  validateSession
+} = require('../middlewares/auth.middleware')
+
+// Controllers
 const {
   getAllMovies,
   getMovieByID,
   createMovie,
   updateMovie,
   deleteMovie
-} = require('../controllers/movies.controller');
+} = require('../controllers/movies.controller')
 
-router.get('/', getAllMovies);
+router.use(validateSession)
 
-router.get('/:id', getMovieByID);
+router.get('/', getAllMovies)
 
-router.post('/', createMovie);
+router.get('/:id', getMovieByID)
 
-router.patch('/:id', updateMovie);
+router.post('/', isAdmin(['admin']), createMovie)
 
-router.delete('/:id', deleteMovie);
+router.patch('/:id', isAdmin(['admin']), updateMovie)
 
-module.exports = { moviesRouter: router };
+router.delete('/:id', isAdmin(['admin']), deleteMovie)
+
+module.exports = { moviesRouter: router }
