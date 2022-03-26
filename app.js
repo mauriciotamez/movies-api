@@ -11,6 +11,7 @@ const { actorsRouter } = require('./routes/actors.route')
 
 const app = express()
 
+app.use(express.urlencoded({ extended: true }))
 app.use(express.json())
 
 // Endpoints
