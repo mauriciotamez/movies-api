@@ -1,23 +1,71 @@
+const {
+  ref,
+  uploadBytes,
+  getDownloadURL
+} = require('firebase/storage')
+
 // Utils
 const { filterObj } = require('../util/filterObj')
 const { handleError } = require('../util/handleError')
 const { AppError } = require('../util/appError')
+const { storage } = require('../util/firebase')
 
 // Models
 const models = require('../models/index')
 
+// ===================================================================================
+
 exports.getAllMovies = handleError(
   async (req, res, next) => {
     const movies = await models.movie.findAll({
-      where: { status: 'active' }
+      where: { status: 'active' },
+      include: [
+        {
+          model: models.actor,
+          attributes: { exclude: ['actor_movie_junction'] }
+        }
+      ]
     })
+
+    let actor = models.actor
+
+    // Promise[]
+    const moviesPromises = movies.map(
+      async ({
+        id,
+        title,
+        description,
+        imgurl,
+        createdAt,
+        updatedAt,
+        actors
+      }) => {
+        const imgRef = ref(storage, imgurl)
+
+        const imgDownloadUrl = await getDownloadURL(imgRef)
+
+        return {
+          id,
+          title,
+          description,
+          imgurl: imgDownloadUrl,
+          createdAt,
+          updatedAt,
+          actors
+        }
+      }
+    )
+
+    const resolvedMovies = await Promise.all(moviesPromises)
 
     res.status(200).json({
       status: 'success',
-      data: { movies }
+      data: { movies: resolvedMovies }
     })
   }
 )
+
+// ===================================================================================
 
 exports.getMovieByID = handleError(
   async (req, res, next) => {
@@ -40,6 +88,8 @@ exports.getMovieByID = handleError(
   }
 )
 
+// ===================================================================================
+
 exports.createMovie = handleError(
   async (req, res, next) => {
     const {
@@ -47,19 +97,33 @@ exports.createMovie = handleError(
       description,
       duration,
       genre,
-      imgurl,
       rating,
-      year
+      year,
+      actors
     } = req.body
+
+    // Upload img to firebase
+    const fileExtension =
+      req.file.originalname.split('.')[1]
+
+    const imgRef = ref(
+      storage,
+      `imgs/movies/${title}-${Date.now()}.${fileExtension}`
+    )
+
+    const imgUploaded = await uploadBytes(
+      imgRef,
+      req.file.buffer
+    )
 
     if (
       !title ||
       !description ||
       !duration ||
       !genre ||
-      !imgurl ||
       !rating ||
-      !year
+      !year ||
+      !actors
     ) {
       return next(
         new AppError(
@@ -74,10 +138,27 @@ exports.createMovie = handleError(
       description,
       duration,
       genre,
-      imgurl,
+      imgurl: imgUploaded.metadata.fullPath,
       rating,
       year
     })
+
+    console.log(actors)
+
+    const actorsInMoviesPromises = actors.map(
+      async (actorId) => {
+        // Assign actors to newly created movie
+        parseInt(actorId)
+        console.log(actorId)
+
+        return await models.actor_movie_junction.create({
+          actorId,
+          movieId: movie.id
+        })
+      }
+    )
+
+    await Promise.all(actorsInMoviesPromises)
 
     res.status(201).json({
       status: 'success',
@@ -85,6 +166,8 @@ exports.createMovie = handleError(
     })
   }
 )
+
+// ===================================================================================
 
 exports.updateMovie = handleError(
   async (req, res, next) => {
@@ -115,6 +198,8 @@ exports.updateMovie = handleError(
       .json({ status: 'success', data: { movie } })
   }
 )
+
+// ===================================================================================
 
 exports.deleteMovie = handleError(
   async (req, res, next) => {
