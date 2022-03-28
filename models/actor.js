@@ -1,5 +1,5 @@
-'use strict';
-const { Model } = require('sequelize');
+'use strict'
+const { Model } = require('sequelize')
 module.exports = (sequelize, DataTypes) => {
   class actor extends Model {
     /**
@@ -9,6 +9,9 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
+      this.belongsToMany(models.movie, {
+        through: models.actor_movie_junction
+      })
     }
   }
   actor.init(
@@ -25,6 +28,6 @@ module.exports = (sequelize, DataTypes) => {
       modelName: 'actor',
       freezeTableName: true
     }
-  );
-  return actor;
-};
+  )
+  return actor
+}

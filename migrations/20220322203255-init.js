@@ -1,4 +1,4 @@
-'use strict';
+'use strict'
 module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('movie', {
@@ -47,7 +47,7 @@ module.exports = {
         allowNull: false,
         type: Sequelize.DATE
       }
-    });
+    })
 
     await queryInterface.createTable('actor', {
       id: {
@@ -90,7 +90,7 @@ module.exports = {
         allowNull: false,
         type: Sequelize.DATE
       }
-    });
+    })
 
     await queryInterface.createTable('user', {
       id: {
@@ -130,7 +130,7 @@ module.exports = {
         allowNull: false,
         type: Sequelize.DATE
       }
-    });
+    })
 
     await queryInterface.createTable('review', {
       id: {
@@ -181,7 +181,7 @@ module.exports = {
         allowNull: false,
         type: Sequelize.DATE
       }
-    });
+    })
 
     await queryInterface.createTable(
       'actor_movie_junction',
@@ -191,27 +191,11 @@ module.exports = {
           autoIncrement: true,
           type: Sequelize.INTEGER,
           allowNull: false
-        },
-        actor_id: {
-          type: Sequelize.INTEGER,
-          allowNull: false,
-          references: {
-            model: 'movie',
-            key: 'id'
-          }
-        },
-        movie_id: {
-          type: Sequelize.INTEGER,
-          allowNull: false,
-          references: {
-            model: 'actor',
-            key: 'id'
-          }
         }
       }
-    );
+    )
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropAllTables();
+    await queryInterface.dropAllTables()
   }
-};
+}
