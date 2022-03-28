@@ -9,6 +9,8 @@ const { AppError } = require('../util/appError')
 
 const models = require('../models/index')
 
+// ===================================================================================
+
 exports.getAllUsers = handleError(
   async (req, res, next) => {
     const users = await models.user.findAll({
@@ -24,6 +26,8 @@ exports.getAllUsers = handleError(
     })
   }
 )
+
+// ===================================================================================
 
 exports.getUserByID = handleError(
   async (req, res, next) => {
@@ -46,6 +50,8 @@ exports.getUserByID = handleError(
     })
   }
 )
+
+// ===================================================================================
 
 exports.createUser = handleError(async (req, res, next) => {
   const { username, email, password } = req.body
@@ -77,6 +83,8 @@ exports.createUser = handleError(async (req, res, next) => {
   })
 })
 
+// ===================================================================================
+
 exports.updateUser = handleError(async (req, res, next) => {
   const { id } = req.params
 
@@ -101,13 +109,29 @@ exports.updateUser = handleError(async (req, res, next) => {
   })
 })
 
+// ===================================================================================
+
 exports.updateUserRole = handleError(
   async (req, res, next) => {
     const { id } = req.params
 
+    const user = await models.user.findOne({
+      where: { id, status: 'active' },
+      attributes: { exclude: ['password'] }
+    })
+
     const data = filterObj(req.body, 'role')
+
+    await user.update({ ...data })
+
+    res.status(200).json({
+      status: 'success',
+      data: { user }
+    })
   }
 )
+
+// ===================================================================================
 
 exports.deleteUser = handleError(async (req, res, next) => {
   const { id } = req.params
@@ -130,6 +154,8 @@ exports.deleteUser = handleError(async (req, res, next) => {
     data: { user }
   })
 })
+
+// ===================================================================================
 
 exports.loginUser = async (req, res, next) => {
   const { email, password } = req.body

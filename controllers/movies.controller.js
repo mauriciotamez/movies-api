@@ -15,213 +15,328 @@ const models = require('../models/index')
 
 // ===================================================================================
 
-exports.getAllMovies = handleError(
-  async (req, res, next) => {
-    const movies = await models.movie.findAll({
-      where: { status: 'active' },
-      include: [
-        {
-          model: models.actor,
-          attributes: { exclude: ['actor_movie_junction'] }
+exports.getAllMovies = handleError(async (req, res, next) => {
+  const movies = await models.movie.findAll({
+    where: { status: 'active' },
+    include: [
+      {
+        model: models.actor
+      }
+    ]
+  })
+
+  let actor = models.actor
+
+  // Promise[]
+  const moviesPromises = movies.map(
+    async ({
+      id,
+      title,
+      description,
+      imgurl,
+      year,
+      createdAt,
+      updatedAt,
+      actors
+    }) => {
+      const imgRef = ref(storage, imgurl)
+      const imgDownloadUrl = await getDownloadURL(imgRef)
+
+      /* Here we map through the actors array that we got earlier from the movies iteration, 
+         we use the same method that firebase provide us to convert the base url(profile_pic) 
+         from the actor and make it a public URL to further consume it.
+      */
+      const actorsPromises = actors.map(
+        async ({
+          id,
+          name,
+          country,
+          age,
+          rating,
+          profile_pic,
+          status,
+          createdAt,
+          updatedAt
+        }) => {
+          const imgRef = ref(storage, profile_pic)
+          const imgDownloadUrl = await getDownloadURL(imgRef)
+
+          return {
+            id,
+            name,
+            country,
+            age,
+            rating,
+            profile_pic: imgDownloadUrl,
+            status,
+            createdAt,
+            updatedAt
+          }
         }
-      ]
-    })
+      )
 
-    let actor = models.actor
+      const resolvedActors = await Promise.all(actorsPromises)
 
-    // Promise[]
-    const moviesPromises = movies.map(
-      async ({
+      return {
         id,
         title,
         description,
-        imgurl,
+        year,
+        imgurl: imgDownloadUrl,
         createdAt,
         updatedAt,
-        actors
-      }) => {
-        const imgRef = ref(storage, imgurl)
-
-        const imgDownloadUrl = await getDownloadURL(imgRef)
-
-        return {
-          id,
-          title,
-          description,
-          imgurl: imgDownloadUrl,
-          createdAt,
-          updatedAt,
-          actors
-        }
+        actors: resolvedActors
       }
-    )
-
-    const resolvedMovies = await Promise.all(moviesPromises)
-
-    res.status(200).json({
-      status: 'success',
-      data: { movies: resolvedMovies }
-    })
-  }
-)
-
-// ===================================================================================
-
-exports.getMovieByID = handleError(
-  async (req, res, next) => {
-    const { id } = req.params
-
-    const movie = await models.movie.findOne({
-      where: { status: 'active', id }
-    })
-
-    if (!movie) {
-      return next(
-        new AppError(404, 'Cannot find movie, invalid ID')
-      )
     }
+  )
 
-    res.status(200).json({
-      status: 'success',
-      data: { movie }
-    })
-  }
-)
+  const resolvedMovies = await Promise.all(moviesPromises)
+
+  res.status(200).json({
+    status: 'success',
+    data: { movies: resolvedMovies }
+  })
+})
 
 // ===================================================================================
 
-exports.createMovie = handleError(
-  async (req, res, next) => {
-    const {
+exports.getMovieByID = handleError(async (req, res, next) => {
+  const { id } = req.params
+
+  const movie = await models.movie.findOne({
+    where: { status: 'active', id },
+    include: [
+      {
+        model: models.actor
+      }
+    ]
+  })
+
+  if (!movie) {
+    return next(new AppError(404, 'Cannot find movie, invalid ID'))
+  }
+
+  // Here we just put our single movie into an array to further map it
+  const movieArray = [movie]
+
+  const moviePromise = movieArray.map(
+    async ({
+      id,
       title,
       description,
-      duration,
-      genre,
-      rating,
+      imgurl,
       year,
+      createdAt,
+      updatedAt,
       actors
-    } = req.body
+    }) => {
+      const imgRef = ref(storage, imgurl)
+      const imgDownloadUrl = await getDownloadURL(imgRef)
 
-    // Upload img to firebase
-    const fileExtension =
-      req.file.originalname.split('.')[1]
+      /* Here we map through the actors array that we got earlier from the movies iteration, 
+         we use the same method that firebase provide us to convert the base url(profile_pic) 
+         from the actor and make it a public URL to further consume it.
+      */
+      const actorsPromises = actors.map(
+        async ({
+          id,
+          name,
+          country,
+          age,
+          rating,
+          profile_pic,
+          status,
+          createdAt,
+          updatedAt
+        }) => {
+          const imgRef = ref(storage, profile_pic)
+          const imgDownloadUrl = await getDownloadURL(imgRef)
 
-    const imgRef = ref(
-      storage,
-      `imgs/movies/${title}-${Date.now()}.${fileExtension}`
-    )
-
-    const imgUploaded = await uploadBytes(
-      imgRef,
-      req.file.buffer
-    )
-
-    if (
-      !title ||
-      !description ||
-      !duration ||
-      !genre ||
-      !rating ||
-      !year ||
-      !actors
-    ) {
-      return next(
-        new AppError(
-          404,
-          'Need to provide a title, description, duration, genre, rating and year.'
-        )
+          return {
+            id,
+            name,
+            country,
+            age,
+            rating,
+            profile_pic: imgDownloadUrl,
+            status,
+            createdAt,
+            updatedAt
+          }
+        }
       )
-    }
 
-    const movie = await models.movie.create({
-      title,
-      description,
-      duration,
-      genre,
-      imgurl: imgUploaded.metadata.fullPath,
-      rating,
-      year
-    })
+      const resolvedActors = await Promise.all(actorsPromises)
 
-    console.log(actors)
-
-    const actorsInMoviesPromises = actors.map(
-      async (actorId) => {
-        // Assign actors to newly created movie
-        parseInt(actorId)
-        console.log(actorId)
-
-        return await models.actor_movie_junction.create({
-          actorId,
-          movieId: movie.id
-        })
+      return {
+        id,
+        title,
+        description,
+        year,
+        imgurl: imgDownloadUrl,
+        createdAt,
+        updatedAt,
+        actors: resolvedActors
       }
-    )
+    }
+  )
 
-    await Promise.all(actorsInMoviesPromises)
+  const resolvedMovie = await Promise.all(moviePromise)
 
-    res.status(201).json({
-      status: 'success',
-      data: { movie }
-    })
-  }
-)
+  console.log(resolvedMovie)
+
+  res.status(200).json({
+    status: 'success',
+    data: { movie: resolvedMovie }
+  })
+})
 
 // ===================================================================================
 
-exports.updateMovie = handleError(
-  async (req, res, next) => {
-    const { id } = req.params
+exports.createMovie = handleError(async (req, res, next) => {
+  const {
+    title,
+    description,
+    duration,
+    genre,
+    rating,
+    year,
+    actors
+  } = req.body
 
-    const data = filterObj(
-      req.body,
-      'title',
-      'description',
-      'duration',
-      'genre',
-      'rating',
-      'year'
+  // Upload img to firebase
+  const fileExtension = req.file.originalname.split('.')[1]
+
+  const imgRef = ref(
+    storage,
+    `imgs/movies/${title}-${Date.now()}.${fileExtension}`
+  )
+
+  const imgUploaded = await uploadBytes(imgRef, req.file.buffer)
+
+  if (
+    !title ||
+    !description ||
+    !duration ||
+    !genre ||
+    !rating ||
+    !year ||
+    !actors
+  ) {
+    return next(
+      new AppError(
+        404,
+        'Need to provide a title, description, duration, genre, rating and year.'
+      )
     )
-
-    const movie = await models.movie.findOne({
-      where: { id, status: 'active' }
-    })
-
-    if (!movie) {
-      return next(400, 'Cannot update movie, invalid ID')
-    }
-
-    await movie.update({ ...data })
-
-    res
-      .status(200)
-      .json({ status: 'success', data: { movie } })
   }
-)
+
+  const movie = await models.movie.create({
+    title,
+    description,
+    duration,
+    genre,
+    imgurl: imgUploaded.metadata.fullPath,
+    rating,
+    year
+  })
+
+  const actorsInMoviesPromises = actors.map(async (actorId) => {
+    // Assign actors to newly created movie
+    parseInt(actorId)
+
+    return await models.actor_movie_junction.create({
+      actorId,
+      movieId: movie.id
+    })
+  })
+
+  await Promise.all(actorsInMoviesPromises)
+
+  res.status(201).json({
+    status: 'success',
+    data: { movie }
+  })
+})
 
 // ===================================================================================
 
-exports.deleteMovie = handleError(
-  async (req, res, next) => {
-    const { id } = req.params
+exports.updateMovie = handleError(async (req, res, next) => {
+  const { id } = req.params
 
-    if (!id) {
-      res.status(404).json({
-        status: 'error',
-        message: 'Cannot delete movie, invalid ID'
-      })
-      return
-    }
+  const data = filterObj(
+    req.body,
+    'title',
+    'description',
+    'duration',
+    'genre',
+    'rating',
+    'year'
+  )
 
-    const movie = await models.movie.findOne({
-      where: { status: 'active', id }
-    })
+  const movie = await models.movie.findOne({
+    where: { id, status: 'active' }
+  })
 
-    await movie.update({ status: 'deleted' })
-
-    res.status(200).json({
-      status: 'success',
-      message: 'deleted'
-    })
+  if (!movie) {
+    return next(400, 'Cannot update movie, invalid ID')
   }
-)
+
+  await movie.update({ ...data })
+
+  res.status(200).json({ status: 'success', data: { movie } })
+})
+
+// ===================================================================================
+
+exports.deleteMovie = handleError(async (req, res, next) => {
+  const { id } = req.params
+
+  if (!id) {
+    res.status(404).json({
+      status: 'error',
+      message: 'Cannot delete movie, invalid ID'
+    })
+    return
+  }
+
+  const movie = await models.movie.findOne({
+    where: { status: 'active', id }
+  })
+
+  await movie.update({ status: 'deleted' })
+
+  res.status(200).json({
+    status: 'success',
+    message: 'deleted'
+  })
+})
+
+// ===================================================================================
+
+exports.createReview = handleError(async (req, res, next) => {
+  const { id } = req.params
+  const { title, comment, rating, user_id, movie_id } = req.body
+
+  if (!title || !comment || !rating || !user_id || !movie_id) {
+    return next(
+      new AppError(
+        404,
+        'Need to provide a title, comment, rating, userID and movieID.'
+      )
+    )
+  }
+
+  const review = await models.review.create({
+    title,
+    comment,
+    rating,
+    user_id,
+    movie_id
+  })
+
+  res.status(200).json({
+    status: 'success',
+    data: { review }
+  })
+})
