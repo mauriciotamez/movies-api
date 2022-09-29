@@ -5,7 +5,8 @@ const router = express.Router()
 // Middlewares
 const {
   validateSession,
-  isAdmin
+  isAdmin,
+  protectAccountOwner
 } = require('../middlewares/auth.middleware')
 
 // Controllers
@@ -19,23 +20,35 @@ const {
   updateUserRole
 } = require('../controllers/users.controller')
 
+// ===================================================================================
+
 router.post('/login', loginUser)
+
+// ===================================================================================
 
 router.post('/', createUser)
 
+// ===================================================================================
+
 router.use(validateSession)
+
+// ===================================================================================
 
 router.get('/', isAdmin(['admin']), getAllUsers)
 
+// ===================================================================================
+
 router.get('/:id', isAdmin(['admin']), getUserByID)
 
-router.patch('/:id', updateUser)
+// ===================================================================================
 
-router.patch(
-  '/admin/:id',
-  isAdmin(['admin']),
-  updateUserRole
-)
+router.patch('/:id', protectAccountOwner, updateUser)
+
+// ===================================================================================
+
+router.patch('/admin/:id', isAdmin(['admin']), updateUserRole)
+
+// ===================================================================================
 
 router.delete('/:id', isAdmin(['admin']), deleteUser)
 

@@ -11,7 +11,8 @@ module.exports = (sequelize, DataTypes) => {
       // define association here
       this.belongsToMany(models.actor, {
         through: models.actor_movie_junction
-      })
+      }),
+        this.hasMany(models.review)
     }
   }
   movie.init(

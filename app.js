@@ -11,6 +11,8 @@ const { actorsRouter } = require('./routes/actors.route')
 
 const app = express()
 
+app.set('view_engine', 'pug')
+
 app.use(express.urlencoded({ extended: true }))
 app.use(express.json())
 

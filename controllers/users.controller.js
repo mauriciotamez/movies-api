@@ -6,50 +6,45 @@ const dotenv = require('dotenv')
 const { filterObj } = require('../util/filterObj')
 const { handleError } = require('../util/handleError')
 const { AppError } = require('../util/appError')
+const { Email } = require('../util/email')
 
 const models = require('../models/index')
 
 // ===================================================================================
 
-exports.getAllUsers = handleError(
-  async (req, res, next) => {
-    const users = await models.user.findAll({
-      where: { status: 'active' },
-      attributes: {
-        exclude: ['password']
-      }
-    })
+exports.getAllUsers = handleError(async (req, res, next) => {
+  const users = await models.user.findAll({
+    where: { status: 'active' },
+    attributes: {
+      exclude: ['password']
+    }
+  })
 
-    res.status(200).json({
-      status: 'success',
-      data: { users }
-    })
-  }
-)
+  res.status(200).json({
+    status: 'success',
+    data: { users }
+  })
+})
 
 // ===================================================================================
 
-exports.getUserByID = handleError(
-  async (req, res, next) => {
-    const { id } = req.params
+exports.getUserByID = handleError(async (req, res, next) => {
+  const { id } = req.params
 
-    const user = await models.user.findOne({
-      where: { status: 'active', id },
-      attributes: { exclude: ['password'] }
-    })
+  const user = await models.user.findOne({
+    where: { status: 'active', id },
+    attributes: { exclude: ['password'] }
+  })
 
-    if (!user) {
-      return next(
-        new AppError(400, 'Cannot find a user, invalid ID')
-      )
-    }
-
-    res.status(200).json({
-      status: 'success',
-      data: { user }
-    })
+  if (!user) {
+    return next(new AppError(400, 'Cannot find a user, invalid ID'))
   }
-)
+
+  res.status(200).json({
+    status: 'success',
+    data: { user }
+  })
+})
 
 // ===================================================================================
 
@@ -58,10 +53,7 @@ exports.createUser = handleError(async (req, res, next) => {
 
   if (!username || !email || !password) {
     return next(
-      new AppError(
-        404,
-        'Must provide a name, email and password'
-      )
+      new AppError(404, 'Must provide a name, email and password')
     )
   }
 
@@ -76,6 +68,8 @@ exports.createUser = handleError(async (req, res, next) => {
   })
 
   newUser.password = undefined
+
+  await new Email(email).sendWelcome()
 
   res.status(201).json({
     status: 'success',
@@ -96,9 +90,7 @@ exports.updateUser = handleError(async (req, res, next) => {
   })
 
   if (!user) {
-    return next(
-      new AppError(404, 'Cannot update user, invalid ID.')
-    )
+    return next(new AppError(404, 'Cannot update user, invalid ID.'))
   }
 
   await user.update({ ...data })
@@ -111,25 +103,23 @@ exports.updateUser = handleError(async (req, res, next) => {
 
 // ===================================================================================
 
-exports.updateUserRole = handleError(
-  async (req, res, next) => {
-    const { id } = req.params
+exports.updateUserRole = handleError(async (req, res, next) => {
+  const { id } = req.params
 
-    const user = await models.user.findOne({
-      where: { id, status: 'active' },
-      attributes: { exclude: ['password'] }
-    })
+  const user = await models.user.findOne({
+    where: { id, status: 'active' },
+    attributes: { exclude: ['password'] }
+  })
 
-    const data = filterObj(req.body, 'role')
+  const data = filterObj(req.body, 'role')
 
-    await user.update({ ...data })
+  await user.update({ ...data })
 
-    res.status(200).json({
-      status: 'success',
-      data: { user }
-    })
-  }
-)
+  res.status(200).json({
+    status: 'success',
+    data: { user }
+  })
+})
 
 // ===================================================================================
 
@@ -142,9 +132,7 @@ exports.deleteUser = handleError(async (req, res, next) => {
   })
 
   if (!user) {
-    return next(
-      new AppError(404, 'Cannot delete user, invalid ID.')
-    )
+    return next(new AppError(404, 'Cannot delete user, invalid ID.'))
   }
 
   await user.update({ status: 'deleted' })
@@ -161,9 +149,7 @@ exports.loginUser = async (req, res, next) => {
   const { email, password } = req.body
 
   if (!email || !password) {
-    return next(
-      new AppError(400, 'Please provide user and email.')
-    )
+    return next(new AppError(400, 'Please provide user and email.'))
   }
   // Find user given an email and a status 'active'
   const user = await models.user.findOne({
@@ -171,10 +157,7 @@ exports.loginUser = async (req, res, next) => {
   })
 
   // Compare req.body password (User password) vs hashed user password
-  if (
-    !user ||
-    !(await bcrypt.compare(password, user.password))
-  ) {
+  if (!user || !(await bcrypt.compare(password, user.password))) {
     return next(new AppError(400, 'Credentials invalid'))
   }
 

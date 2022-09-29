@@ -1,6 +1,13 @@
-const express = require('express');
+const express = require('express')
 
-const router = express.Router();
+const router = express.Router()
+
+// Utils
+
+const { upload } = require('../util/multer')
+const { isAdmin, validateSession } = require('../middlewares/auth.middleware')
+
+// Controllers
 
 const {
   getAllActors,
@@ -8,16 +15,30 @@ const {
   createActor,
   updateActor,
   deleteActor
-} = require('../controllers/actors.controller');
+} = require('../controllers/actors.controller')
 
-router.get('/', getAllActors);
+// ===================================================================================
 
-router.get('/:id', getActorByID);
+router.use(validateSession)
 
-router.post('/', createActor);
+// ===================================================================================
 
-router.patch('/:id', updateActor);
+router.get('/', getAllActors)
 
-router.delete('/:id', deleteActor);
+// ===================================================================================
 
-module.exports = { actorsRouter: router };
+router.get('/:id', getActorByID)
+
+// ===================================================================================
+
+router.post('/', isAdmin(['admin']), upload.single('img'), createActor)
+
+// ===================================================================================
+
+router.patch('/:id', isAdmin(['admin']), updateActor)
+
+// ===================================================================================
+
+router.delete('/:id', isAdmin(['admin']), deleteActor)
+
+module.exports = { actorsRouter: router }
